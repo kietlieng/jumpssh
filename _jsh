@@ -1,0 +1,48 @@
+#compdef jsh
+
+writeout() {
+  echo "$@" > ~/results.txt
+}
+
+_jsh() {
+#  _alternative 'arguments:custom arg:(a b c)' 'arguments:custom arg:(d e f)'
+#  arg_length=${#words[@]}
+#  writeout $words
+#  case "$arg_length" in
+#    2)
+#      writeout "first arg"
+#      ;;
+#    3)
+#      writeout "second arg"
+#      ;;
+#    4)
+#      writeout "third arg"
+#      ;;
+#    5)
+#      writeout "fourth arg"
+#      ;;
+#  esac
+
+#  # positional values
+#  _arguments '1: :->first' '2: :->second'
+#  case "$state" in
+#        first)
+#          writeout "$words"
+#          _values 'current value' $(grep -i ".*$words[2].*" /Users/klieng/lab/scripts/contents/all.txt)
+#          ;;
+#        second)
+#          writeout "$words"
+#          _values 'current value' $(grep -i ".*$words[2].*$words[3].*" /Users/klieng/lab/scripts/contents/all.txt)
+#          ;;
+#  esac
+
+  # positional values
+  _arguments '1: :->files'
+  case "$state" in
+      files)
+          _values 'current value' $(cat /Users/klieng/lab/scripts/contents/all.txt)
+          ;;
+  esac
+}
+
+_jsh "$@"
