@@ -76,6 +76,7 @@ function jsh() {
   S_SERVICE_TYPE='status'
   S_SERVICE_PATH_PRE='/et/services'
   S_SERVICE_PATH_POST='bin/service.sh'
+  S_DOC=0
 
   if [[ "'$*'" = *-d* ]] ;
   then
@@ -125,12 +126,16 @@ function jsh() {
         shift
       fi
       ;;
+     '-doc' ) # docker states
+        S_DOC=1
+        shift
+      ;;
      '-u' ) # user
-      S_USER="$2"
-      isSwitch $2
-      isEmpty $2
-      debugme "last command results is $ROYAL_LAST_IS_SWITCH"
-      shift
+        S_USER="$2"
+        isSwitch $2
+        isEmpty $2
+        debugme "last command results is $ROYAL_LAST_IS_SWITCH"
+        shift
       # is a switch then just assign the value
       if [ "$ROYAL_LAST_IS_SWITCH" -eq "0" ]; 
       then
@@ -219,6 +224,10 @@ function jsh() {
 	    echo "assh service"
             assh $S_USER$S_CURRENTURI $S_PASSWORD "$S_SERVICE_PATH_PRE/$S_SERVICE/$S_SERVICE_PATH_POST $S_SERVICE_TYPE"
           # execute with query
+          elif [ "$S_DOC" -eq "1" ]
+	  then
+            echo "assh docker"
+            assh $S_USER$S_CURRENTURI $S_PASSWORD "docker ps"
           elif [ "$S_EXECUTE_COMMAND" != "" ]
 	  then
             echo "assh execute"
@@ -236,6 +245,10 @@ function jsh() {
 	  then
             echo "ssh services"
             ssh $S_USER$S_CURRENTURI "$S_SERVICE_PATH_PRE/$S_SERVICE/$S_SERVICE_PATH_POST $S_SERVICE_TYPE"
+          elif [ "$S_DOC" -eq "1" ]
+	  then
+            echo "ssh stats"
+            ssh $S_USER$S_CURRENTURI "docker ps"
           elif [ "$S_EXECUTE_COMMAND" != "" ]
 	  then
             echo "ssh execute"
