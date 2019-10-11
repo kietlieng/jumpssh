@@ -19,7 +19,10 @@ function debugme() {
 
 function assh() {
   cop $2
-  sshpass -e ssh -o StrictHostKeyChecking=no $1
+  S_HOST=$1
+  shift
+  shift
+  sshpass -e ssh -o StrictHostKeyChecking=no $S_HOST "$@"
 }
 
 function isEmpty() {
@@ -68,6 +71,11 @@ function jsh() {
   S_MYSQL_COMMAND='false'
   S_ORACLE_COMMAND='false'
   S_MYSQL_LOGIN='false'
+  S_SERVICE_ENABLED=0
+  S_SERVICE='web'
+  S_SERVICE_TYPE='status'
+  S_SERVICE_PATH_PRE='/et/services'
+  S_SERVICE_PATH_POST='bin/service.sh'
 
   if [[ "'$*'" = *-d* ]] ;
   then
@@ -90,6 +98,14 @@ function jsh() {
       S_CONNECT='true'
       S_USER="etadm"
       S_PASSWORD="p"
+      shift
+      ;;
+    '-et' ) # service
+      S_SERVICE_ENABLED=1
+      S_SERVICE="$2"
+      shift
+      shift
+      S_SERVICE_TYPE="$1"
       shift
       ;;
     '-p' ) # grab password
@@ -149,7 +165,7 @@ function jsh() {
       shift
       shift
       ;;
-    '-exec' )
+    '-exec' ) # record and quit
       S_EXECUTE_COMMAND="$2"
       shift
       shift
@@ -197,13 +213,37 @@ function jsh() {
         echo "login: $S_USER$S_CURRENTURI $S_PASSWORD" #'$S_EXECUTE_COMMAND'"
         if [ $ROYAL_DO_NOT_CONNECT -eq "0" ] ; 
         then
-          assh $S_USER$S_CURRENTURI $S_PASSWORD #'$S_EXECUTE_COMMAND'
+	  # restart service 
+          if [ $S_SERVICE_ENABLED -eq "1" ] ; 
+	  then
+	    echo "assh service"
+            assh $S_USER$S_CURRENTURI $S_PASSWORD "$S_SERVICE_PATH_PRE/$S_SERVICE/$S_SERVICE_PATH_POST $S_SERVICE_TYPE"
+          # execute with query
+          elif [ "$S_EXECUTE_COMMAND" != "" ]
+	  then
+            echo "assh execute"
+            assh $S_USER$S_CURRENTURI $S_PASSWORD "$S_EXECUTE_COMMAND"
+          else
+            echo "assh "
+            assh $S_USER$S_CURRENTURI $S_PASSWORD #'$S_EXECUTE_COMMAND'
+	  fi
         fi
       else
         echo "ssh $S_USER$S_CURRENTURI"
         if [ $ROYAL_DO_NOT_CONNECT -eq "0" ] ; 
         then
-          ssh $S_USER$S_CURRENTURI #'$S_EXECUTE_COMMAND'
+          if [ $S_SERVICE_ENABLED -eq "1" ] ; 
+	  then
+            echo "ssh services"
+            ssh $S_USER$S_CURRENTURI "$S_SERVICE_PATH_PRE/$S_SERVICE/$S_SERVICE_PATH_POST $S_SERVICE_TYPE"
+          elif [ "$S_EXECUTE_COMMAND" != "" ]
+	  then
+            echo "ssh execute"
+            ssh $S_USER$S_CURRENTURI "$S_EXECUTE_COMMAND"
+	  else
+            echo "ssh"
+            ssh $S_USER$S_CURRENTURI #'$S_EXECUTE_COMMAND'
+	  fi
         fi
       fi
     elif [ "$S_MYSQL_COMMAND" = 'true' ]; then
