@@ -1,22 +1,22 @@
-ROYAL_DEBUG_ME=0
-ROYAL_LAST_IS_SWITCH=1
-ROYAL_LAST_IS_EMPTY=1
-ROYAL_DO_NOT_CONNECT=0
-ROYAL_LAST_COMMAND="echo "
+royal_debug_me=0
+royal_last_is_switch=1
+royal_last_is_empty=1
+royal_do_not_connect=0
+royal_list_command="echo "
 
-export ROYAL_FILETARGET=~/lab/scripts/servers/all.txt
-export ROYAL_FILEPRODTARGET=~/lab/scripts/servers/prodall.txt
-export ROYAL_LAST_SEARCH_FILE=~/lab/scripts/servers/searchstring.txt
+export royal_filetarget=~/lab/scripts/servers/all.txt
+export royal_file_prod_target=~/lab/scripts/servers/prodall.txt
+export royal_last_search_file=~/lab/scripts/servers/searchstring.txt
 
 function resetroyalsettings() {
-    ROYAL_DEBUG_ME=0
-    ROYAL_LAST_IS_SWITCH=1
-    ROYAL_LAST_IS_EMPTY=1
-    ROYAL_DO_NOT_CONNECT=0
+    royal_debug_me=0
+    royal_last_is_switch=1
+    royal_last_is_empty=1
+    royal_do_not_connect=0
 }
 
 function debugme() {
-    if [ "$ROYAL_DEBUG_ME" -eq "1" ]; then
+    if [ "$royal_debug_me" -eq "1" ]; then
         echo ">> DEBUG: $1"
     fi
 }
@@ -30,27 +30,27 @@ function assh() {
 }
 
 function isEmpty() {
-    ROYAL_LAST_IS_EMPTY=1
+    royal_last_is_empty=1
     if [[ "$1" = "" ]] ;
     then
         debugme "is empty"
-        ROYAL_LAST_IS_EMPTY=0
+        royal_last_is_empty=0
     fi
     debugme "is not empty"
 }
 
 function isSwitch() {
-    ROYAL_LAST_IS_SWITCH=1
+    royal_last_is_switch=1
     if [[ $1 = -* ]] ;
     then
         debugme "is switch"
-        ROYAL_LAST_IS_SWITCH=0
+        royal_last_is_switch=0
     fi
     debugme "is not switch"
 }
 
 function jshc() {
-    echo "jsh $ROYAL_LAST_COMMAND -c"
+    echo "jsh $royal_list_command -c"
 }
 
 function mjsh(){
@@ -69,119 +69,151 @@ function mjsh(){
 
 function jsh() {
     resetroyalsettings
-    S_FILETARGET="$ROYAL_FILETARGET"
-    S_FILEPRODTARGET="$ROYAL_FILEPRODTARGET"
+    sFileTarget="$royal_filetarget"
+    sFileProdTarget="$royal_file_prod_target"
 
     if [[ $# -eq 0 ]] ; then
         echo 'No arguments'
         return 0
     fi
-    S_ALL_ARGS="$@"
 
-    S_SEARCH=$1
+    # we don't want the search string.
+    # variable will be useful only for tmux
+    sSearch=$1
     shift
+    #sAllArgs="${@}"
+    sAllArgs=""
 
     # Give listing
-    if [ $S_SEARCH = '-l' ]; then
-        cat $S_FILETARGET
+    if [ $sSearch = '-l' ]; then
+        cat $sFileTarget
         return
     fi
-    if [ $S_SEARCH = '-lp' ]; then
-        cat $S_FILEPRODTARGET
+    if [ $sSearch = '-lp' ]; then
+        cat $sFileProdTarget
         return
     fi
 
-    S_CONNECT='false'
-    S_COPY_OUTPUT_COMMAND='false'
-    S_DOC=0
-    S_EXECUTE_COMMAND=""
-    S_LIST='false'
-    S_MANUAL='false'
-    S_MYSQL_COMMAND='false'
-    S_MYSQL_LOGIN='false'
-    S_NOTINCLUDE=""
-    S_ORACLE_COMMAND='false'
-    S_PASSWORD=''
-    S_PING='false'
-    S_PRETTY_PRINT='false'
-    S_SERVICE='web'
-    S_SERVICE_ENABLED=0
-    S_SERVICE_PATH_POST='bin/service.sh'
-    S_SERVICE_PATH_PRE='/et/services'
-    S_SERVICE_TYPE='status'
-    S_USER=''
-    S_TMUX=''
+    sConnect='false'
+    sCopyOutputCommand='false'
+    sDoc=0
+    sExecuteCommand=""
+    sList='false'
+    sManual='false'
+    sMysqlCommand='false'
+    sMysqlLogin='false'
+    sNotInclude=""
+    sOracleCommand='false'
+    sPassword=''
+    sPing='false'
+    sPrettyPrint='false'
+    sService='web'
+    sServiceEnabled=0
+    sServicePathPost='bin/service.sh'
+    sServicePathPre='/et/services'
+    sServiceType='status'
+    sUser=''
+    sTmux=''
 
     if [[ "'$*'" = *-d* ]] ;
     then
-        ROYAL_DEBUG_ME=1
+        royal_debug_me=1
         echo "================ SET DEBUG"
     fi
 
+    lastArg1=""
+    lastArg2=""
     while [[ $# -gt 0 ]]
     do
-        KEY="$1"
-        #echo "key $KEY"
-        case $KEY in
+        key="$1"
+        #echo "key $1"
+        #echo "starting $sAllArgs"
+        # if listArg1 has value
+        if [[ "" != "$lastArg1" ]]; then
+            #echo "concat $lastArg1 $lastArg2 to $sAllArgs"
+            sAllArgs="${sAllArgs}${lastArg1}${lastArg2}"
+        fi
+
+        lastArg1=" $1"
+        lastArg2=""
+
+        case $key in
             '-f' ) # fake connect
-                ROYAL_DO_NOT_CONNECT=1
+                royal_do_not_connect=1
                 shift
                 ;;
             '-s' ) # debug skip it
                 shift
                 ;;
             '-c' ) # too lazy to type 
-                S_CONNECT='true'
-                S_USER="etadm"
-                S_PASSWORD="p"
+                sConnect='true'
+                # if this hasn't been set already
+                if [[ "" == "$sUser" ]]; then
+                    sUser="etadm"
+                fi
+                # if this hasn't been set already
+                if [[ "" == "$sPassword" ]]; then
+                    sPassword="p"
+                fi
                 shift
                 ;;
             '-list' ) # service
-                S_LIST='true'
+                sList='true'
                 shift
                 ;;
             '-et' ) # service
                 # copy this command options to connect
-                S_CONNECT='true'
-                S_USER="etadm"
-                S_PASSWORD="p"
+                # if this hasn't been set already
+                sConnect='true'
+                if [[ "" == "$sUser" ]]; then
+                    sUser="etadm"
+                fi
+                # if this hasn't been set already
+                if [[ "" == "$sPassword" ]]; then
+                    sPassword="p"
+                fi
                 
                 # regular command
-                S_SERVICE_ENABLED=1
-                S_SERVICE="$2"
+                sServiceEnabled=1
+                sService="$2"
+                lastArg2=" $2"
                 shift
                 shift
                 # grab service type
-                S_SERVICE_TYPE="$1"
+                sServiceType="$1"
                 shift
                 ;;
             '-tm' )
-                S_TMUX='true'
-                S_ALL_ARGS="${S_ALL_ARGS/ -tm/}"
+                sTmux='true'
+                #sAllArgs="${sAllArgs/ -tm/}"
+                lastArg1=""
+                lastArg2=""
 
                 shift
                 ;;
             '-o' )
-                S_COPY_OUTPUT_COMMAND='true'
+                sCopyOutputCommand='true'
                 shift
                 ;;
             '-pretty' )
-                S_PRETTY_PRINT='true'
+                sPrettyPrint='true'
                 shift
                 ;;
             '-p' ) # grab password
                 debugme "password"
-                S_CONNECT='true'
-                S_PASSWORD="$2"
+                sConnect='true'
+                sPassword="$2"
                 isSwitch $2
                 isEmpty $2
                 shift
-                if [ "$ROYAL_LAST_IS_SWITCH" -eq "0" ]; 
+                if [ "$royal_last_is_switch" -eq "0" ]; 
                 then
-                    S_PASSWORD="p"
-                elif [ "$ROYAL_LAST_IS_EMPTY" -eq "0" ];
+                    sPassword="p"
+                    lastArg2=" p"
+                elif [ "$royal_last_is_empty" -eq "0" ];
                 then
-                    S_PASSWORD="p"
+                    sPassword="p"
+                    lastArg2=" p"
                 else
                     shift
                 fi
@@ -218,242 +250,279 @@ function jsh() {
                 else
                     echo -n "$copy_path" | pbcopy
                 fi
+                lastArg2= "$copy_path"
                 shift
                 shift
                 ;;
             '-doc' ) # docker states
-                S_DOC=1
+                sDoc=1
                 shift
                 ;;
             '-u' ) # user
-                S_USER="$2"
-                S_CONNECT='true'
+                sUser="$2"
+                sConnect='true'
                 isSwitch $2
                 isEmpty $2
-                debugme "last command results is $ROYAL_LAST_IS_SWITCH"
+                debugme "last command results is $royal_last_is_switch"
                 shift
                 # is a switch then just assign the value
-                if [ "$ROYAL_LAST_IS_SWITCH" -eq "0" ]; 
+                if [ "$royal_last_is_switch" -eq "0" ]; 
                 then
                     debugme "is a switch assign etadm"
-                    S_USER="etadm"
-                elif [ "$ROYAL_LAST_IS_EMPTY" -eq "0" ];
+                    sUser="etadm"
+                elif [ "$royal_last_is_empty" -eq "0" ];
                 then
                     debugme "empty assign etadm"
-                    S_USER="etadm"
+                    sUser="etadm"
                 else
                     shift
                 fi
-                case $S_USER in
+                lastArg2=" $sUser"
+                case $sUser in
                     'root' ) 
                         echo "root user password"
-                        S_PASSWORD="e"
+                        sPassword="e"
                         ;;
                     'oracle' )
                         echo "oracle password"
-                        S_PASSWORD="o"
+                        sPassword="o"
                         ;;
                     * )
-                        S_PASSWORD="p"
+                        sPassword="p"
                         echo "no password assumed"
                         ;;
                 esac
 
-                debugme "user is $S_USER"
+                debugme "user is $sUser"
                 ;;
             '-t' ) # ping it
-                S_PING='true'
+                sPing='true'
                 shift
                 ;;
             '-m' ) # manually connect with the string
-                S_MANUAL='true'
+                sManual='true'
                 shift
                 ;;
             '-a' ) # add on to the search term
-                S_SEARCH="$S_SEARCH.*$2"
-                debugme $S_SEARCH
+                sSearch="$sSearch.*$2"
+                debugme $sSearch
                 shift
                 shift
                 ;;
             '-v' ) # does not include
-                S_NOTINCLUDE="$2"
-                debugme "exclude $S_NOTINCLUDE"
+                sNotInclude="$2"
+                debugme "exclude $sNotInclude"
                 shift
                 shift
                 ;;
             '-exec' ) # record and quit
-                S_EXECUTE_COMMAND="$2"
+                sExecuteCommand="$2"
+                lastArg2=" $2"
                 shift
                 shift
                 ;;
             '-qq' )
-                S_MYSQL_COMMAND='true'
-                S_MYSQL_LOGIN="$2"
+                sMysqlCommand='true'
+                sMysqlLogin="$2"
+                lastArg2=" $2"
                 shift
                 shift
                 ;;
             '-q' )
-                S_MYSQL_COMMAND='true'
+                sMysqlCommand='true'
                 shift
                 ;;
             '-P' ) # use production list
-                S_FILETARGET=$S_FILEPRODTARGET
+                sFileTarget=$sFileProdTarget
                 shift
                 ;;
             * )
                 debugme "add to search $1"
-                S_SEARCH="$S_SEARCH.*$1"
+                lastArg1=""
+                lastArg2=""
+                # remove the search string
+                #sAllArgs=${sAllArgs/$1/}
+                sSearch="$sSearch.*$1"
                 shift
                 ;;
         esac
     done
-
+    #echo "lastarg1 |$lastArg1| $sAllArgs"
+    # if listArg1 has value
+    if [[ "" != "$lastArg1" ]]; then
+    #    echo "last add"
+        sAllArgs="${sAllArgs}${lastArg1}${lastArg2}"
+    fi
+    #echo "allargs | ${sAllArgs} |"
+    #return
     # manual seach
-    if [ "$S_SEARCH" ] || [ $S_MANUAL = 'true' ] || [ $S_COPY_OUTPUT_COMMAND = 'true' ]; then
+    if [ "$sSearch" ] || [ $sManual = 'true' ] || [ $sCopyOutputCommand = 'true' ]; then
 
         # copy the output
-        if [ $S_COPY_OUTPUT_COMMAND = 'true' ]; then
-            S_COPY=$(grep -i $S_SEARCH $S_FILETARGET)
+        if [ $sCopyOutputCommand = 'true' ]; then
+            S_COPY=$(grep -i $sSearch $sFileTarget)
             echo "$S_COPY" | pbcopy
         fi
 
         # if true don't interpret anything just run the command
-        if [ $S_MANUAL = 'true' ]; then
-            S_CURRENTURI=$S_SEARCH
+        if [ $sManual = 'true' ]; then
+            sCurrentURI=$sSearch
             # list jump points
         else
-            if [[ "$S_TMUX" == "true" ]]; then
-                S_CURRENTURI=$(grep -i $S_SEARCH $S_FILETARGET | grep -o "=.*" | cut -c2-)
+            if [[ "$sTmux" == "true" ]]; then
+                sCurrentURI=$(grep -i $sSearch $sFileTarget | grep -o "=.*" | cut -c2-)
             else
-                S_CURRENTURI=$(grep -i $S_SEARCH $S_FILETARGET | grep -o "=.*" | cut -c2- | head -n 1)
+                sCurrentURI=$(grep -i $sSearch $sFileTarget | grep -o "=.*" | cut -c2- | head -n 1)
             fi
 
             # not include in connection run command with inverse
-            if [ "$S_NOTINCLUDE" != "" ]; then
-                debugme "not include is $S_NOTINCLUDE"
+            if [ "$sNotInclude" != "" ]; then
+                debugme "not include is $sNotInclude"
                 echo "not include" 
-                if [[ "$S_TMUX" == "true" ]]; then
-                    S_CURRENTURI=$(grep -i $S_SEARCH $S_FILETARGET | grep -o "=.*" | grep -iv $S_NOTINCLUDE | cut -c2- )
+                if [[ "$sTmux" == "true" ]]; then
+                    sCurrentURI=$(grep -i $sSearch $sFileTarget | grep -o "=.*" | grep -iv $sNotInclude | cut -c2- )
                 else
-                    S_CURRENTURI=$(grep -i $S_SEARCH $S_FILETARGET | grep -o "=.*" | grep -iv $S_NOTINCLUDE | cut -c2- | head -n 1)
+                    sCurrentURI=$(grep -i $sSearch $sFileTarget | grep -o "=.*" | grep -iv $sNotInclude | cut -c2- | head -n 1)
                 fi
             fi
         fi
-        counter=$(echo "$S_CURRENTURI" | wc -l)
-        #echo "counter $counter |$S_CURRENTURI|"
+        #echo "counter $counter |$sCurrentURI|"
         # split on 
-        #echo "tmux value $S_TMUX"
-        if [[ "$S_TMUX" == "true" ]]; then
-            TMUX_COMMAND=""
-            pane_name="tpane"
-            first_pane="t"
-        
-            for current_ip in $(sed 's/:/\n/g' <<< $S_CURRENTURI)
+        #echo "tmux value $sTmux"
+        # if tmux option is true create the panes by passing the ip of the currentIP variable to jsh. 
+        # basically using jsh to create tmux sessions that will in affect call jsh 
+        if [[ "$sTmux" == "true" ]]; then
+            tmuxCommand=""
+            paneName="tpane"
+            firstPane="t"
+
+            # iterate through listing
+            for currentIP in $(sed 's/:/\n/g' <<< $sCurrentURI)
             do
-                if [[ "$first_pane" == "t" ]]; then
-                    tmux new-session -d -s $pane_name
-                    first_pane="f"
+                if [[ "$firstPane" == "t" ]]; then
+                    tmux new-session -d -s $paneName
+                    firstPane="f"
                 else
-                    tmux split-window -h -t $pane_name
+                    tmux split-window -h -t $paneName
                 fi
-                tmux send-keys -t $pane_name "jsh $S_ALL_ARGS $current_ip" Enter
 
+                # get the specific entry by recreating sCurrentURI keyed to IP
+                tmCurrentURI=$(grep -i $sSearch $sFileTarget | grep "$currentIP")
 
-#                #echo "\"jsh $S_ALL_ARGS $value\" "
-#                TMUX_COMMAND="$TMUX_COMMAND \"jsh $S_ALL_ARGS $value\" "
+                # generate the output properly
+                echo "jsh $tmCurrentURI $sAllArgs" 
+                
+                # send command to the output properly
+                tmux send-keys -t $paneName "jsh $tmCurrentURI $sAllArgs" Enter
 
+                # have to readjust pane space after you add a new pane
+                # (the panes are divided in half between on the current pane so 
+                # you will eventually get smaller and smaller panes for the next 
+                # session.  Will run out of pane space after about 7 panes
+                # more will not be created
+                tmux select-layout -t $paneName even-horizontal
+
+                echo "\"jsh $tmCurrentURI $currentIP\" "
+#                tmuxCommand="$tmuxCommand \"jsh $tmCurrentURI $currentIP\" "
             done
 
-            if [[ "$first_pane" == "f" ]]; then
-                tmux select-layout -t $pane_name tiled
-                tmux set-window-option -t $pane_name synchronize-panes on
-                tmux attach -t $pane_name
+            # firstPane to false means there was at least 1 tmux session. 
+            if [[ "$firstPane" == "f" ]]; then
+                
+                # I want to select the left most pane so just go right to warp
+                # to the left most pane
+                tmux select-pane -t $paneName -R
+
+                tmux select-layout -t $paneName tiled
+                tmux set-window-option -t $paneName synchronize-panes on
+                tmux attach -t $paneName
             fi
 
+            # done don't process any other conditionals
             return
         fi
     
         # start ping
-        if [ "$S_PING" = 'true' ]; then
-            debugme "ping this $S_CURRENTURI"
-            ping $S_CURRENTURI  
+        if [ "$sPing" = 'true' ]; then
+            debugme "ping this $sCurrentURI"
+            ping $sCurrentURI  
             # connect regularly
-        elif [ "$S_CONNECT" = 'true' ]; then
-            debugme "connect string $S_SEARCH"
-            debugme "string should be $S_CURRENTURI";
-            if [ "$S_USER" != "" ]; then
-                S_USER="$S_USER@"
+        elif [ "$sConnect" = 'true' ]; then
+            debugme "connect string $sSearch"
+            debugme "string should be $sCurrentURI";
+            if [ "$sUser" != "" ]; then
+                sUser="$sUser@"
             fi
-            if [ "$S_PASSWORD" ]; then
-                echo "login: $S_USER$S_CURRENTURI $S_PASSWORD" #'$S_EXECUTE_COMMAND'"
-                if [ $ROYAL_DO_NOT_CONNECT -eq "0" ] ; 
+            if [ "$sPassword" ]; then
+                echo "login: $sUser$sCurrentURI $sPassword" #'$sExecuteCommand'"
+                if [ $royal_do_not_connect -eq "0" ] ; 
                 then
                     # restart service 
-                    if [ $S_SERVICE_ENABLED -eq "1" ] ; 
+                    if [ $sServiceEnabled -eq "1" ] ; 
                     then
                         echo "assh service"
-                        assh $S_USER$S_CURRENTURI $S_PASSWORD "$S_SERVICE_PATH_PRE/$S_SERVICE/$S_SERVICE_PATH_POST $S_SERVICE_TYPE"
+                        assh $sUser$sCurrentURI $sPassword "$sServicePathPre/$sService/$sServicePathPost $sServiceType"
                     # execute with query
-                    elif [ "$S_LIST" = "true" ]; 
+                    elif [ "$sList" = "true" ]; 
                     then
                         echo "assh list services"
-                        assh $S_USER$S_CURRENTURI $S_PASSWORD "ls $S_SERVICE_PATH_PRE"
-                    elif [ "$S_DOC" -eq "1" ]
+                        assh $sUser$sCurrentURI $sPassword "ls $sServicePathPre"
+                    elif [ "$sDoc" -eq "1" ]
                     then
                         echo "assh docker"
-                        assh $S_USER$S_CURRENTURI $S_PASSWORD "docker ps"
-                    elif [ "$S_EXECUTE_COMMAND" != "" ]
+                        assh $sUser$sCurrentURI $sPassword "docker ps"
+                    elif [ "$sExecuteCommand" != "" ]
                     then
                         echo "assh execute"
-                        assh $S_USER$S_CURRENTURI $S_PASSWORD "$S_EXECUTE_COMMAND"
-                    else
+                        assh $sUser$sCurrentURI $sPassword "$sExecuteCommand"
+                   else
                         echo "assh "
-                        assh $S_USER$S_CURRENTURI $S_PASSWORD #'$S_EXECUTE_COMMAND'
+                        assh $sUser$sCurrentURI $sPassword #'$sExecuteCommand'
                     fi
                 fi
             else
-                echo "ssh $S_USER$S_CURRENTURI"
-                if [ $ROYAL_DO_NOT_CONNECT -eq "0" ] ; 
+                echo "ssh $sUser$sCurrentURI"
+                if [ $royal_do_not_connect -eq "0" ] ; 
                 then
-                    if [ $S_SERVICE_ENABLED -eq "1" ] ; 
+                    if [ $sServiceEnabled -eq "1" ] ; 
                     then
                         echo "ssh services"
-                        ssh $S_USER$S_CURRENTURI "$S_SERVICE_PATH_PRE/$S_SERVICE/$S_SERVICE_PATH_POST $S_SERVICE_TYPE"
-                    elif [ "$S_DOC" -eq "1" ]
+                        ssh $sUser$sCurrentURI "$sServicePathPre/$sService/$sServicePathPost $sServiceType"
+                    elif [ "$sDoc" -eq "1" ]
                     then
                         echo "ssh stats"
-                        ssh $S_USER$S_CURRENTURI "docker ps"
-                    elif [ "$S_EXECUTE_COMMAND" != "" ]
+                        ssh $sUser$sCurrentURI "docker ps"
+                    elif [ "$sExecuteCommand" != "" ]
                     then
                         echo "ssh execute"
-                        ssh $S_USER$S_CURRENTURI "$S_EXECUTE_COMMAND"
+                        ssh $sUser$sCurrentURI "$sExecuteCommand"
                     else
                         echo "ssh"
-                        ssh $S_USER$S_CURRENTURI #'$S_EXECUTE_COMMAND'
+                        ssh $sUser$sCurrentURI #'$sExecuteCommand'
                     fi
                 fi
             fi
-        elif [ "$S_MYSQL_COMMAND" = 'true' ]; then
-            if [ "$S_MYSQL_LOGIN" = 'false' ]; then
-                /usr/local/bin/mysql -h $S_CURRENTURI -u etadm -e "show databases;"
+        elif [ "$sMysqlCommand" = 'true' ]; then
+            if [ "$sMysqlLogin" = 'false' ]; then
+                /usr/local/bin/mysql -h $sCurrentURI -u etadm -e "show databases;"
             else
-                /usr/local/bin/mysql -h $S_CURRENTURI -u etadm $S_MYSQL_LOGIN
+                /usr/local/bin/mysql -h $sCurrentURI -u etadm $sMysqlLogin
             fi
         else
             # if it has something to exclude run the exclusion
-            if [ "$S_NOTINCLUDE" != "" ]; then
-                grep -i "$S_SEARCH" $S_FILETARGET | grep -iv $S_NOTINCLUDE
+            if [ "$sNotInclude" != "" ]; then
+                grep -i "$sSearch" $sFileTarget | grep -iv $sNotInclude
             else
 
-                if [ "$S_PRETTY_PRINT" = 'true' ]; then
-                  grep -i "$S_SEARCH" $S_FILETARGET | sed 's/\^.*=/=/g'
+                if [ "$sPrettyPrint" = 'true' ]; then
+                  grep -i "$sSearch" $sFileTarget | sed 's/\^.*=/=/g'
                 else
-                  grep -i "$S_SEARCH" $S_FILETARGET 
+                  grep -i "$sSearch" $sFileTarget 
                 fi
     
             fi
         fi
     else
-        cat $S_FILETARGET
+        cat $sFileTarget
     fi
 }
